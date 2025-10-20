@@ -1,0 +1,69 @@
+@page "/administratorpage"
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@using Login.Shared
+@rendermode InteractiveServer
+
+<div style="display: flex; justify-content: space-between; align-items: center; padding: 10px;">
+    <h2>Administrator's Page</h2>
+
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <span>@displayedEmail</span>
+        <button type="button" @onclick="LogoutAsync" disabled="@isLoggingOut" style="padding: 5px 10px; cursor: pointer;">
+            @logoutButtonText
+        </button>
+    </div>
+</div>
+
+<hr />
+
+<div style="padding: 20px;">
+    <p>Welcome to the administrator dashboard.</p>
+</div>
+
+@code {
+    private string displayedEmail = string.Empty;
+    private bool isLoggingOut = false;
+    private string logoutButtonText = "Log Out";
+
+    protected override void OnInitialized()
+    {
+        if (string.IsNullOrWhiteSpace(UserSession.Email))
+        {
+            Console.WriteLine(" Administrator Page: No session email found; redirecting to login (/).");
+            Navigation.NavigateTo("/", forceLoad: true);
+            return;
+        }
+
+        displayedEmail = UserSession.Email;
+        Console.WriteLine($"Administrator Page loaded. Logged in as: {displayedEmail}");
+    }
+
+    private async Task LogoutAsync()
+    {
+        isLoggingOut = true;
+        logoutButtonText = "Logging out.";
+        StateHasChanged();
+
+        try
+        {
+            Console.WriteLine("🚪 Administrator Page: LogoutAsync invoked (SERVER side). Clearing session...");
+            UserSession.Email = string.Empty;
+            UserSession.Role = string.Empty;
+            await JS.InvokeVoidAsync("console.log", "🚪 AdministratorPage: Logout clicked (CLIENT side)");
+            Navigation.NavigateTo("/", forceLoad: false);
+            await JS.InvokeVoidAsync("eval", "window.location.href = '/'");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($" LogoutAsync error: {ex.Message}");
+            await JS.InvokeVoidAsync("eval", "window.location.href = '/'");
+        }
+        finally
+        {
+            isLoggingOut = false;
+            logoutButtonText = "Log Out";
+            StateHasChanged();
+        }
+    }
+}

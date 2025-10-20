@@ -1,0 +1,229 @@
+@page "/signup"
+@inject NavigationManager Navigation
+@using Login.Shared
+@rendermode InteractiveServer
+
+<h1 id="page-title">Sign Up</h1>
+
+<style>
+/* ===== BODY ===== */
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(rgba(0, 50, 0, 0.7), rgba(0, 0, 0, 0.8)),
+                url('https://wallpapercave.com/wp/wp7053404.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+}
+
+/* ===== SIGNUP CONTAINER ===== */
+#signup-form {
+    background: rgba(0, 30, 0, 0.6);
+    border: 1px solid rgba(0, 255, 0, 0.3);
+    padding: 40px 35px;
+    border-radius: 20px;
+    box-shadow: 0 0 25px rgba(0, 255, 0, 0.3);
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    animation: glowFade 4s infinite alternate;
+}
+
+/* ===== TITLE ===== */
+#signup-form::before {
+    content: "Tokyo Sign Up";
+    display: block;
+    font-size: 22px;
+    font-weight: 700;
+    text-align: center;
+    color: #00ff99;
+    margin-bottom: 25px;
+    letter-spacing: 1px;
+    text-shadow: 0 0 10px #00ff99;
+}
+
+/* ===== LABELS ===== */
+label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #00ff99;
+    margin-bottom: 6px;
+    display: block;
+}
+
+/* ===== INPUTS ===== */
+input, select {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 255, 0, 0.4);
+    background-color: rgba(0, 0, 0, 0.3);
+    color: #00ffcc;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 18px;
+    outline: none;
+    transition: 0.2s ease;
+}
+
+input:focus, select:focus {
+    border-color: #00ffcc;
+    box-shadow: 0 0 8px rgba(0, 255, 0, 0.3);
+}
+
+/* ===== BUTTON ===== */
+button {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    background: linear-gradient(90deg, #00ff99, #00ffaa);
+    color: #000;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+button:hover {
+    transform: scale(1.03);
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+}
+
+/* ===== LOGIN LINK ===== */
+#login-link {
+    text-align: center;
+    margin-top: 15px;
+    color: #00ffcc;
+    font-size: 13px;
+}
+
+#login-link span {
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+#login-link span:hover {
+    color: #00ffaa;
+}
+
+/* ===== MESSAGES ===== */
+#error-message, #success-message {
+    text-align: center;
+    margin-top: 10px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+#error-message {
+    color: #ff4d4d;
+}
+
+#success-message {
+    color: #00ff99;
+}
+
+</style>
+
+
+
+<div id="signup-form" class="signup-form">
+    <label id="role-label">
+        User Type:
+        <select id="role-select" @bind="selectedRole">
+            <option value="Student">Student</option>
+            <option value="Professor">Professor</option>
+            <option value="Administrator">Administrator</option>
+        </select>
+    </label>
+    <br />
+
+    <label id="email-label">
+        Email:
+        <input id="email-input" @bind="email" type="email" placeholder="example@gmail.com" />
+    </label>
+    <br />
+
+    <label id="password-label">
+        Password:
+        <input id="password-input" type="password" @bind="password" />
+    </label>
+    <br />
+
+    <button id="signup-button" @onclick="SignUp">Sign Up</button>
+
+    <div id="login-link" @onclick="BackToLogin">
+        Already have an account? <span>Login</span>
+    </div>
+
+    <div id="success-message">@successMessage</div>
+    <div id="error-message">@errorMessage</div>
+</div>
+
+@code {
+    private string email = string.Empty;
+    private string password = string.Empty;
+    private string selectedRole = "Student";
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+
+    private void SignUp()
+    {
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(email) || !email.EndsWith("@gmail.com", StringComparison.OrdinalIgnoreCase))
+        {
+            errorMessage = "Please enter a valid Gmail address.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            errorMessage = "Please enter a password.";
+            return;
+        }
+
+        if (UserDatabase.Accounts.Any(a => a.Email.Equals(email, StringComparison.OrdinalIgnoreCase)))
+        {
+            errorMessage = "This account already exists.";
+            return;
+        }
+
+        UserDatabase.Accounts.Add(new UserAccount
+        {
+            Email = email,
+            Password = password,
+            Role = selectedRole
+        });
+
+        UserSession.Email = email;
+        UserSession.Role = selectedRole;
+
+        successMessage = $"Successfully signed up as {selectedRole}!";
+        NavigateToRolePage(selectedRole);
+    }
+
+    private void BackToLogin()
+    {
+        Navigation.NavigateTo("/", forceLoad: true);
+    }
+
+    private void NavigateToRolePage(string role)
+    {
+        if (role == "Student")
+            Navigation.NavigateTo("/studentpage", forceLoad: true);
+        else if (role == "Professor")
+            Navigation.NavigateTo("/professorpage", forceLoad: true);
+        else if (role == "Administrator")
+            Navigation.NavigateTo("/administratorpage", forceLoad: true);
+    }
+}

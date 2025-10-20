@@ -1,0 +1,106 @@
+@page "/studentpage"
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@using Login.Shared
+@rendermode InteractiveServer
+
+<div style="display: flex; justify-content: space-between; align-items: center; padding: 10px;">
+    <h2>Student's Page</h2>
+
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <span>@displayedEmail</span>
+        <button type="button" @onclick="LogoutAsync" disabled="@isLoggingOut" style="padding: 5px 10px; cursor: pointer;">
+            @logoutButtonText
+        </button>
+    </div>
+</div>
+
+<hr />
+
+<div style="padding: 20px;">
+    <p>Welcome to the student dashboard.</p>
+</div>
+
+@code {
+    private string displayedEmail = string.Empty;
+    private bool isLoggingOut = false;
+    private string logoutButtonText = "Log Out";
+
+    protected override void OnInitialized()
+    {
+        // If no email in session, redirect to login immediately
+        if (string.IsNullOrWhiteSpace(UserSession.Email))
+        {
+            Console.WriteLine(" Student Page: No session email found; redirecting to login (/).");
+            Navigation.NavigateTo("/", forceLoad: true);
+            return;
+        }
+
+        displayedEmail = UserSession.Email;
+        Console.WriteLine($" Student Page loaded. Logged in as: {displayedEmail}");
+    }
+
+    private async Task LogoutAsync()
+    {
+        // immediate UI feedback
+        isLoggingOut = true;
+        logoutButtonText = "Logging out.";
+        StateHasChanged();
+
+        try
+        {
+            // SERVER-SIDE log
+            Console.WriteLine("🚪 Student Page: LogoutAsync invoked (SERVER side). Clearing session...");
+
+            // Clear session server-side
+            UserSession.Email = string.Empty;
+            UserSession.Role = string.Empty;
+
+            // CLIENT-SIDE log (browser console)
+            try
+            {
+                await JS.InvokeVoidAsync("console.log", "🚪 StudentPage: Logout clicked (CLIENT side) - clearing session & redirecting to /");
+            }
+            catch
+            {
+                // ignore any JS error here, we'll still redirect below
+            }
+
+            // Try normal Blazor navigation first (SPA style)
+            try
+            {
+                Navigation.NavigateTo("/", forceLoad: false);
+            }
+            catch (Exception navEx)
+            {
+                Console.WriteLine($" Navigation.NavigateTo threw: {navEx.Message}");
+            }
+
+            // Fallback: force a hard browser redirect (guaranteed)
+            try
+            {
+                await JS.InvokeVoidAsync("eval", "window.location.href = '/'");
+            }
+            catch (Exception jsEx)
+            {
+                Console.WriteLine($" Hard redirect via JS failed: {jsEx.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($" LogoutAsync error: {ex.Message}");
+            try
+            {
+                await JS.InvokeVoidAsync("eval", "window.location.href = '/'");
+            }
+            catch { /* swallow */ }
+        }
+        finally
+        {
+            // reset UI if redirect didn't happen immediately
+            isLoggingOut = false;
+            logoutButtonText = "Log Out";
+            StateHasChanged();
+        }
+    }
+}
